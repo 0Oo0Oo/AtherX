@@ -9,7 +9,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import { Camera } from 'expo-camera';
+import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { Video } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,7 +17,7 @@ import PoseTrackerService from '../services/PoseTrackerService';
 import config from '../config/apiConfig';
 
 const FormCheckScreen = () => {
-  const [hasPermission, setHasPermission] = useState(null);
+  const [permission, requestPermission] = useCameraPermissions();
   const [isRecording, setIsRecording] = useState(false);
   const [recordedVideo, setRecordedVideo] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -33,14 +33,8 @@ const FormCheckScreen = () => {
   const poseTrackerService = useRef(new PoseTrackerService()); // Uses API key from config
 
   useEffect(() => {
-    getPermissions();
     loadExerciseLibrary();
   }, []);
-
-  const getPermissions = async () => {
-    const { status } = await Camera.requestCameraPermissionsAsync();
-    setHasPermission(status === 'granted');
-  };
 
   const loadExerciseLibrary = async () => {
     try {
@@ -65,7 +59,6 @@ const FormCheckScreen = () => {
       }, 1000);
 
       const recordingOptions = {
-        quality: Camera.Constants.VideoQuality[config.VIDEO_QUALITY],
         maxDuration: config.MAX_RECORDING_DURATION,
         mute: true,
       };
@@ -156,7 +149,7 @@ const FormCheckScreen = () => {
     setRecordingTime(0);
   };
 
-  if (hasPermission === null) {
+  if (!permission) {
     return (
       <View style={styles.container}>
         <LinearGradient colors={['#1a1a1a', '#2d2d2d']} style={styles.background}>
@@ -167,7 +160,7 @@ const FormCheckScreen = () => {
     );
   }
 
-  if (hasPermission === false) {
+  if (!permission.granted) {
     return (
       <View style={styles.container}>
         <LinearGradient colors={['#1a1a1a', '#2d2d2d']} style={styles.background}>
@@ -177,7 +170,7 @@ const FormCheckScreen = () => {
             <Text style={styles.permissionText}>
               To analyze your workout form, we need access to your camera. Please enable camera permissions in your device settings.
             </Text>
-            <TouchableOpacity style={styles.permissionButton} onPress={getPermissions}>
+            <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
               <Text style={styles.permissionButtonText}>Grant Permission</Text>
             </TouchableOpacity>
           </View>
@@ -230,11 +223,10 @@ const FormCheckScreen = () => {
               </View>
             </View>
           ) : (
-            <Camera
+            <CameraView
               ref={cameraRef}
               style={styles.camera}
-              type={Camera.Constants.Type.back}
-              ratio="16:9"
+              facing={CameraType.back}
             >
               <View style={styles.cameraOverlay}>
                 {isRecording && (
@@ -248,7 +240,7 @@ const FormCheckScreen = () => {
                   <Text style={styles.guideSubtext}>Make sure your full body is visible</Text>
                 </View>
               </View>
-            </Camera>
+            </CameraView>
           )}
         </View>
 
