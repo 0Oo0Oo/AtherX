@@ -1,8 +1,10 @@
 import React from 'react';
+import { Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import WorkoutScreen from './screens/WorkoutScreen';
+import FormCheckScreen from './screens/FormCheckScreen';
 import ProgressScreen from './screens/ProgressScreen';
 import ProfileScreen from './screens/ProfileScreen';
 
@@ -47,7 +49,7 @@ export default function App() {
           />
           <Tab.Screen
             name="Form"
-            component={ProgressScreen}
+            component={FormCheckScreen}
             options={{
               tabBarLabel: 'FORM CHECK',
               tabBarIcon: ({ focused }) => (

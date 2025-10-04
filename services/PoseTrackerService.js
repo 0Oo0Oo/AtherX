@@ -1,20 +1,29 @@
+import config from '../config/apiConfig.js';
+
 class PoseTrackerService {
-  constructor(apiKey) {
-    this.apiKey = apiKey;
-    this.baseURL = 'https://api.posetracker.com/v1';
+  constructor(apiKey = null) {
+    this.apiKey = apiKey || config.POSE_TRACKER_API_KEY;
+    this.baseURL = config.POSE_TRACKER_BASE_URL;
+    this.useDemoMode = config.USE_DEMO_MODE;
   }
 
   async analyzeForm(exerciseName, videoFile) {
-    if (!this.apiKey) {
-      throw new Error('Pose Tracker API key is required');
-    }
-
     if (!exerciseName) {
       throw new Error('Exercise name is required');
     }
 
     if (!videoFile) {
       throw new Error('Video file is required for form analysis');
+    }
+
+    // Use demo mode only if explicitly configured
+    if (this.useDemoMode || this.apiKey === 'demo-api-key-123') {
+      console.log('Using demo mode for form analysis');
+      return this.getDemoAnalysisResult(exerciseName);
+    }
+
+    if (!this.apiKey) {
+      throw new Error('Pose Tracker API key is required. Please check your configuration.');
     }
 
     try {
@@ -42,6 +51,53 @@ class PoseTrackerService {
       console.error('Error analyzing form:', error);
       throw new Error('Failed to analyze form. Please check your video and try again.');
     }
+  }
+
+  // Demo analysis for testing purposes
+  getDemoAnalysisResult(exerciseName) {
+    // Simulate API processing delay
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const baseScore = Math.floor(Math.random() * 30) + 60; // 60-90 score range
+        const demoResult = {
+          overall_score: baseScore,
+          feedback: this.getDemoFeedback(exerciseName, baseScore),
+          corrections: [],
+          strengths: []
+        };
+        
+        resolve(this.formatAnalysisResult(demoResult));
+      }, 2000); // 2 second delay to simulate processing
+    });
+  }
+
+  getDemoFeedback(exerciseName, score) {
+    const exerciseFeedback = {
+      'Barbell Squat': [
+        { joint: 'Knees', issue: 'Slight knee valgus detected during descent', severity: 'medium', timestamp: 3.2 },
+        { joint: 'Back', issue: 'Good spinal alignment maintained throughout', severity: 'low', timestamp: 2.1 },
+        { joint: 'Hips', issue: 'Excellent hip hinge movement pattern', severity: 'low', timestamp: 1.8 }
+      ],
+      'Bench Press': [
+        { joint: 'Elbows', issue: 'Elbows slightly too wide, aim for 45-degree angle', severity: 'medium', timestamp: 2.5 },
+        { joint: 'Back', issue: 'Good arch maintenance and shoulder blade retraction', severity: 'low', timestamp: 1.2 }
+      ],
+      'Deadlift': [
+        { joint: 'Back', issue: 'Minor rounding detected in lower back at bottom', severity: 'high', timestamp: 4.1 },
+        { joint: 'Hips', issue: 'Excellent hip hinge initiation', severity: 'low', timestamp: 0.8 }
+      ]
+    };
+
+    const feedback = exerciseFeedback[exerciseName] || [
+      { joint: 'General', issue: 'Form analysis completed successfully', severity: 'low', timestamp: 2.0 }
+    ];
+
+    // Adjust feedback based on score
+    if (score < 70) {
+      feedback.push({ joint: 'General', issue: 'Focus on controlled movement tempo', severity: 'medium', timestamp: 5.0 });
+    }
+
+    return feedback;
   }
 
   formatAnalysisResult(apiResponse) {

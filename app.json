@@ -14,16 +14,44 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "permissions": [
+      "CAMERA",
+      "RECORD_AUDIO"
+    ],
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Ather Fitness to access your camera to analyze your workout form.",
+          "microphonePermission": "Allow Ather Fitness to record audio for workout videos."
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow Ather Fitness to record audio for workout videos."
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ather.fitness"
+      "bundleIdentifier": "com.ather.fitness",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses the camera to analyze your workout form and provide AI-powered feedback.",
+        "NSMicrophoneUsageDescription": "This app uses the microphone to record audio for workout videos."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#667eea"
       },
-      "package": "com.ather.fitness"
+      "package": "com.ather.fitness",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
