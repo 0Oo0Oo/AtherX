@@ -22,6 +22,19 @@ const WorkoutScreen = () => {
   const [loading, setLoading] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
 
+  // Timer state variables
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [workoutStartTime, setWorkoutStartTime] = useState(null);
+  const [elapsedTime, setElapsedTime] = useState(0);
+
+  // API key and workout generation state
+  const [apiKey, setApiKey] = useState('');
+  const [userGoals, setUserGoals] = useState('');
+  const [equipment, setEquipment] = useState('None');
+  const [fitnessLevel, setFitnessLevel] = useState('Beginner');
+  const [duration, setDuration] = useState('30');
+  const [workout, setWorkout] = useState('');
+
   const poseTrackerService = new PoseTrackerService(poseApiKey);
   const geminiService = new GeminiService(); // Uses default API key
 
