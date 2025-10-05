@@ -4,7 +4,7 @@ class PoseTrackerService {
   constructor(apiKey = null) {
     this.apiKey = apiKey || config.POSE_TRACKER_API_KEY;
     this.baseURL = config.POSE_TRACKER_BASE_URL;
-    this.useDemoMode = config.USE_DEMO_MODE;
+    this.useDemoMode = true; // Using demo mode for now since API is not working
   }
 
   async analyzeForm(exerciseName, videoFile) {

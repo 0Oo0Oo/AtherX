@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,6 +22,7 @@ const ProgressScreen = () => {
   });
   const [motivationalMessage, setMotivationalMessage] = useState('');
   const [expandedId, setExpandedId] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadWorkouts();
@@ -29,6 +31,7 @@ const ProgressScreen = () => {
 
   const loadWorkouts = async () => {
     try {
+      setLoading(true);
       const workoutHistory = await AsyncStorage.getItem('workoutHistory');
       if (workoutHistory) {
         const parsedWorkouts = JSON.parse(workoutHistory);
@@ -37,6 +40,8 @@ const ProgressScreen = () => {
       }
     } catch (error) {
       console.error('Error loading workouts:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -189,39 +194,119 @@ const ProgressScreen = () => {
                 <Text style={styles.statIconText}>📅</Text>
               </View>
               <Text style={styles.statNumber}>{stats.totalWorkouts}</Text>
-              <Text style={styles.statLabel}>WORKOUTS{'\n'}THIS WEEK</Text>
+              <Text style={styles.statLabel}>TOTAL{'\n'}WORKOUTS</Text>
             </View>
             <View style={styles.statCard}>
               <View style={styles.statIcon}>
-                <Text style={styles.statIconText}>🏆</Text>
+                <Text style={styles.statIconText}>📊</Text>
               </View>
               <Text style={styles.statNumber}>{stats.thisWeek}</Text>
-              <Text style={styles.statLabel}>AVG FORM{'\n'}SCORE</Text>
+              <Text style={styles.statLabel}>THIS{'\n'}WEEK</Text>
             </View>
           </View>
 
           <View style={styles.statsContainer}>
             <View style={styles.statCard}>
               <View style={styles.statIcon}>
-                <Text style={styles.statIconText}>📈</Text>
+                <Text style={styles.statIconText}>⏱️</Text>
               </View>
-              <Text style={styles.statNumber}>{stats.totalMinutes}</Text>
-              <Text style={styles.statLabel}>TOTAL{'\n'}WORKOUTS</Text>
+              <Text style={styles.statNumber}>{Math.floor(stats.totalMinutes / 60)}h {stats.totalMinutes % 60}m</Text>
+              <Text style={styles.statLabel}>TOTAL{'\n'}TIME</Text>
             </View>
             <View style={styles.statCard}>
               <View style={styles.statIcon}>
-                <Text style={styles.statIconText}>⏱️</Text>
+                <Text style={styles.statIconText}>🔥</Text>
               </View>
               <Text style={styles.statNumber}>{stats.streak}</Text>
-              <Text style={styles.statLabel}>FORM CHECKS</Text>
+              <Text style={styles.statLabel}>CURRENT{'\n'}STREAK</Text>
             </View>
           </View>
 
-          {/* CTA Button */}
-          <TouchableOpacity style={styles.ctaButton}>
-            <Text style={styles.ctaButtonIcon}>🚀</Text>
-            <Text style={styles.ctaButtonText}>START YOUR JOURNEY</Text>
-          </TouchableOpacity>
+          {/* Motivational Message */}
+          {motivationalMessage && workouts.length > 0 && (
+            <View style={styles.motivationalSection}>
+              <Text style={styles.motivationalText}>{motivationalMessage}</Text>
+            </View>
+          )}
+
+          {/* Workout History */}
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#ff4757" />
+              <Text style={styles.loadingText}>Loading your progress...</Text>
+            </View>
+          ) : workouts.length > 0 ? (
+            <View style={styles.historySection}>
+              <View style={styles.historyHeader}>
+                <Text style={styles.historyTitle}>WORKOUT HISTORY</Text>
+                <TouchableOpacity onPress={clearAllWorkouts}>
+                  <Text style={styles.clearAllText}>Clear All</Text>
+                </TouchableOpacity>
+              </View>
+
+              {workouts.map((workout) => (
+                <View key={workout.id} style={styles.workoutCard}>
+                  <TouchableOpacity
+                    style={styles.workoutHeader}
+                    onPress={() => setExpandedId(expandedId === workout.id ? null : workout.id)}
+                  >
+                    <View style={styles.workoutInfo}>
+                      <Text style={styles.workoutDate}>{formatDate(workout.date)}</Text>
+                      <Text style={styles.workoutGoals}>{workout.goals}</Text>
+                    </View>
+                    <View style={styles.workoutMeta}>
+                      <Text style={styles.workoutDuration}>{workout.duration}min</Text>
+                      <Text style={styles.expandIcon}>
+                        {expandedId === workout.id ? '▼' : '▶'}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  {expandedId === workout.id && (
+                    <View style={styles.workoutDetails}>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Equipment:</Text>
+                        <Text style={styles.detailValue}>{workout.equipment}</Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Level:</Text>
+                        <Text style={styles.detailValue}>{workout.fitnessLevel}</Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Duration:</Text>
+                        <Text style={styles.detailValue}>{workout.duration} minutes</Text>
+                      </View>
+                      {workout.completedTime && (
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailLabel}>Completed:</Text>
+                          <Text style={styles.detailValue}>{formatTime(workout.completedTime)}</Text>
+                        </View>
+                      )}
+                      <View style={styles.workoutContent}>
+                        <Text style={styles.workoutText}>{workout.workout}</Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.deleteButton}
+                        onPress={() => deleteWorkout(workout.id)}
+                      >
+                        <Text style={styles.deleteButtonText}>Delete</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyIcon}>🎯</Text>
+              <Text style={styles.emptyTitle}>No Workouts Yet</Text>
+              <Text style={styles.emptyText}>Start your fitness journey by creating your first workout!</Text>
+              <TouchableOpacity style={styles.ctaButton}>
+                <Text style={styles.ctaButtonIcon}>🚀</Text>
+                <Text style={styles.ctaButtonText}>CREATE FIRST WORKOUT</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </ScrollView>
       </LinearGradient>
     </View>
@@ -360,6 +445,166 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     letterSpacing: 0.5,
+  },
+  motivationalSection: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 16,
+    padding: 20,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: '#333',
+    alignItems: 'center',
+  },
+  motivationalText: {
+    color: '#fff',
+    fontSize: 16,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    color: '#888',
+    fontSize: 16,
+    marginTop: 20,
+  },
+  historySection: {
+    marginTop: 20,
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  historyTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+  clearAllText: {
+    color: '#ff4757',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  workoutCard: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#333',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  workoutHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+  },
+  workoutInfo: {
+    flex: 1,
+  },
+  workoutDate: {
+    color: '#ff4757',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  workoutGoals: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  workoutMeta: {
+    alignItems: 'center',
+    marginLeft: 15,
+  },
+  workoutDuration: {
+    color: '#888',
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  expandIcon: {
+    color: '#ff4757',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  workoutDetails: {
+    backgroundColor: '#1a1a1a',
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#333',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  detailLabel: {
+    color: '#888',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  detailValue: {
+    color: '#fff',
+    fontSize: 14,
+  },
+  workoutContent: {
+    marginTop: 12,
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: '#333',
+    borderRadius: 8,
+  },
+  workoutText: {
+    color: '#fff',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  deleteButton: {
+    backgroundColor: '#ff4757',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignSelf: 'flex-start',
+  },
+  deleteButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 60,
+  },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: 20,
+  },
+  emptyTitle: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  emptyText: {
+    color: '#888',
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 30,
   },
 });
 

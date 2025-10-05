@@ -11,22 +11,9 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import PoseTrackerService from '../services/PoseTrackerService';
 import GeminiService from '../services/GeminiService';
 
 const WorkoutScreen = () => {
-  const [poseApiKey] = useState('af48c0d0-dca9-4cc3-93e7-f67174bbedb');
-  const [exerciseName, setExerciseName] = useState('');
-  const [selectedVideo, setSelectedVideo] = useState(null);
-  const [analysis, setAnalysis] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [showAnalysis, setShowAnalysis] = useState(false);
-
-  // Timer state variables
-  const [timerRunning, setTimerRunning] = useState(false);
-  const [workoutStartTime, setWorkoutStartTime] = useState(null);
-  const [elapsedTime, setElapsedTime] = useState(0);
-
   // API key and workout generation state
   const [apiKey, setApiKey] = useState('');
   const [userGoals, setUserGoals] = useState('');
@@ -34,8 +21,15 @@ const WorkoutScreen = () => {
   const [fitnessLevel, setFitnessLevel] = useState('Beginner');
   const [duration, setDuration] = useState('30');
   const [workout, setWorkout] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showWorkoutForm, setShowWorkoutForm] = useState(true);
+  const [showTimer, setShowTimer] = useState(false);
 
-  const poseTrackerService = new PoseTrackerService(poseApiKey);
+  // Timer state variables
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [workoutStartTime, setWorkoutStartTime] = useState(null);
+  const [elapsedTime, setElapsedTime] = useState(0);
+
   const geminiService = new GeminiService(); // Uses default API key
 
   useEffect(() => {
@@ -149,52 +143,7 @@ const WorkoutScreen = () => {
     }
   };
 
-  const analyzeForm = async () => {
-    if (!exerciseName) {
-      Alert.alert('⚠️ Missing Exercise', 'Please enter the exercise name first');
-      return;
-    }
 
-    if (!selectedVideo) {
-      Alert.alert('⚠️ No Video', 'Please select a video file first');
-      return;
-    }
-
-    setLoading(true);
-    setAnalysis(null);
-
-    try {
-      // For demo purposes, simulate analysis since we can't actually upload files in React Native
-      // In a real implementation, you'd use react-native-image-picker or similar
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
-
-      // Mock analysis result for demonstration
-      const mockAnalysis = {
-        score: Math.floor(Math.random() * 40) + 60, // Random score 60-100
-        feedback: [
-          { joint: 'Knees', issue: 'Knees caving inward during squat', severity: 'medium' },
-          { joint: 'Back', issue: 'Slight rounding in lower back', severity: 'low' }
-        ],
-        corrections: [
-          '🎯 Keep your knees aligned with your toes during the movement',
-          '🔄 Keep your back straight and core engaged',
-          '📏 Maintain a 90-degree angle at the bottom of the squat'
-        ],
-        strengths: [
-          '💪 Great stability and control',
-          '🎯 Good exercise execution',
-          '🔥 Excellent effort and determination!'
-        ]
-      };
-
-      setAnalysis(mockAnalysis);
-      setShowAnalysis(true);
-    } catch (error) {
-      Alert.alert('❌ Error', 'Failed to analyze form. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -209,106 +158,141 @@ const WorkoutScreen = () => {
           <View style={styles.header}>
             <View style={styles.logoContainer}>
               <View style={styles.logo}>
-                <Text style={styles.logoText}>⚡</Text>
+                <Text style={styles.logoText}>💬</Text>
               </View>
               <View style={styles.titleContainer}>
-                <Text style={styles.title}>FORM CHECK</Text>
-                <Text style={styles.subtitle}>AI-powered technique analysis</Text>
+                <Text style={styles.title}>AI WORKOUT COACH</Text>
+                <Text style={styles.subtitle}>Personalized training plans</Text>
               </View>
             </View>
           </View>
 
-          {/* Exercise Name Input */}
+          {/* API Key Section */}
           <View style={styles.inputSection}>
-            <Text style={styles.inputLabel}>EXERCISE NAME</Text>
+            <Text style={styles.inputLabel}>GEMINI API KEY</Text>
             <TextInput
               style={styles.mainInput}
-              placeholder="e.g., Barbell Squat, Bench Press..."
+              placeholder="Enter your Gemini API key..."
+              placeholderTextColor="#666"
+              value={apiKey}
+              onChangeText={setApiKey}
+              secureTextEntry={false}
+            />
+            <TouchableOpacity style={styles.saveKeyButton} onPress={saveApiKey}>
+              <Text style={styles.saveKeyButtonText}>💾 Save API Key</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Workout Generation Form */}
+          <View style={styles.inputSection}>
+            <Text style={styles.inputLabel}>YOUR FITNESS GOALS</Text>
+            <TextInput
+              style={[styles.mainInput, { height: 80, textAlignVertical: 'top' }]}
+              placeholder="e.g., Build muscle, lose weight, improve endurance..."
               placeholderTextColor="#666"
               value={userGoals}
               onChangeText={setUserGoals}
+              multiline
             />
           </View>
 
-          {/* Video Upload Section */}
-          <View style={styles.uploadSection}>
-            <Text style={styles.sectionTitle}>WORKOUT VIDEO</Text>
-            <View style={styles.uploadArea}>
-              <View style={styles.uploadIcon}>
-                <Text style={styles.uploadIconText}>⬆️</Text>
-              </View>
-              <Text style={styles.uploadTitle}>UPLOAD VIDEO</Text>
-              <Text style={styles.uploadSubtitle}>Tap to select from your gallery</Text>
-              <Text style={styles.uploadFormat}>MP4, MOV, or AVI • MAX 100MB</Text>
+          <View style={styles.inputRow}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>EQUIPMENT</Text>
+              <TextInput
+                style={styles.mainInput}
+                placeholder="e.g., Full gym, dumbbells only..."
+                placeholderTextColor="#666"
+                value={equipment}
+                onChangeText={setEquipment}
+              />
+            </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>DURATION (MIN)</Text>
+              <TextInput
+                style={styles.mainInput}
+                placeholder="30"
+                placeholderTextColor="#666"
+                value={duration}
+                onChangeText={setDuration}
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputSection}>
+            <Text style={styles.inputLabel}>FITNESS LEVEL</Text>
+            <View style={styles.levelGrid}>
+              {['Beginner', 'Intermediate', 'Advanced'].map((level) => (
+                <TouchableOpacity
+                  key={level}
+                  style={[
+                    styles.levelOption,
+                    fitnessLevel === level && styles.levelOptionSelected
+                  ]}
+                  onPress={() => setFitnessLevel(level)}
+                >
+                  <Text style={[
+                    styles.levelOptionText,
+                    fitnessLevel === level && styles.levelOptionTextSelected
+                  ]}>
+                    {level}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
 
           {/* Generate Button */}
           <TouchableOpacity
             style={styles.generateButton}
-            onPress={analyzeForm}
+            onPress={generateWorkout}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Text style={styles.generateButtonIcon}>✓</Text>
-                <Text style={styles.generateButtonText}>ANALYZE MY FORM</Text>
+                <Text style={styles.generateButtonIcon}>⚡</Text>
+                <Text style={styles.generateButtonText}>GENERATE WORKOUT</Text>
               </>
             )}
           </TouchableOpacity>
 
-          {/* Analysis Results */}
-          {showAnalysis && analysis && (
-            <View style={styles.analysisSection}>
-              <Text style={styles.analysisTitle}>📊 Form Analysis Results</Text>
+          {/* Generated Workout Display */}
+          {workout && (
+            <View style={styles.workoutSection}>
+              <Text style={styles.workoutTitle}>🎯 Your Personalized Workout</Text>
+              <View style={styles.workoutContent}>
+                <Text style={styles.workoutText}>{workout}</Text>
+              </View>
 
-              {/* Score Display */}
-              <View style={styles.scoreContainer}>
-                <View style={[styles.scoreCircle, { borderColor: poseTrackerService.getScoreColor(analysis.score) }]}>
-                  <Text style={[styles.scoreEmoji, { color: poseTrackerService.getScoreColor(analysis.score) }]}>
-                    {poseTrackerService.getScoreEmoji(analysis.score)}
-                  </Text>
-                  <Text style={[styles.scoreText, { color: poseTrackerService.getScoreColor(analysis.score) }]}>
-                    {analysis.score}%
-                  </Text>
-                  <Text style={styles.scoreLabel}>FORM SCORE</Text>
+              {/* Timer Section */}
+              <View style={styles.timerSection}>
+                <Text style={styles.timerTitle}>⏱️ Workout Timer</Text>
+                <View style={styles.timerDisplay}>
+                  <Text style={styles.timerText}>{formatTime(elapsedTime)}</Text>
+                </View>
+                <View style={styles.timerControls}>
+                  {!timerRunning ? (
+                    <TouchableOpacity style={styles.timerButton} onPress={startTimer}>
+                      <Text style={styles.timerButtonText}>▶️ START</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity style={[styles.timerButton, styles.timerButtonStop]} onPress={stopTimer}>
+                      <Text style={styles.timerButtonText}>⏸️ PAUSE</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity style={styles.timerButton} onPress={resetTimer}>
+                    <Text style={styles.timerButtonText}>🔄 RESET</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
 
-              {/* Strengths */}
-              <View style={styles.feedbackSection}>
-                <Text style={styles.feedbackTitle}>🌟 Strengths</Text>
-                {analysis.strengths.map((strength, index) => (
-                  <View key={index} style={styles.feedbackItem}>
-                    <Text style={styles.feedbackText}>{strength}</Text>
-                  </View>
-                ))}
-              </View>
-
-              {/* Areas for Improvement */}
-              <View style={styles.feedbackSection}>
-                <Text style={styles.feedbackTitle}>🎯 Areas for Improvement</Text>
-                {analysis.corrections.map((correction, index) => (
-                  <View key={index} style={styles.feedbackItem}>
-                    <Text style={styles.feedbackText}>{correction}</Text>
-                  </View>
-                ))}
-              </View>
-
-              {/* Detailed Feedback */}
-              {analysis.feedback.length > 0 && (
-                <View style={styles.feedbackSection}>
-                  <Text style={styles.feedbackTitle}>🔍 Detailed Feedback</Text>
-                  {analysis.feedback.map((item, index) => (
-                    <View key={index} style={styles.feedbackItem}>
-                      <Text style={styles.jointText}>{item.joint}:</Text>
-                      <Text style={styles.issueText}>{item.issue}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
+              {/* Save Workout Button */}
+              <TouchableOpacity style={styles.saveButton} onPress={saveWorkout}>
+                <Text style={styles.saveButtonText}>💾 Save Workout</Text>
+              </TouchableOpacity>
             </View>
           )}
         </ScrollView>
@@ -398,66 +382,51 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  uploadSection: {
-    marginBottom: 30,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#888',
-    marginBottom: 15,
-    letterSpacing: 1,
-  },
-  uploadArea: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#333',
-    borderStyle: 'dashed',
-    padding: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 200,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  uploadIcon: {
-    width: 60,
-    height: 60,
-    backgroundColor: '#ff4757',
+  saveKeyButton: {
+    backgroundColor: '#333',
     borderRadius: 12,
-    justifyContent: 'center',
+    padding: 12,
     alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#ff4757',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
+    marginTop: 8,
   },
-  uploadIconText: {
-    fontSize: 24,
+  saveKeyButtonText: {
     color: '#fff',
-  },
-  uploadTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  uploadSubtitle: {
     fontSize: 14,
-    color: '#888',
-    marginBottom: 5,
-    textAlign: 'center',
+    fontWeight: '600',
   },
-  uploadFormat: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
+  inputRow: {
+    flexDirection: 'row',
+    gap: 15,
+    marginBottom: 25,
+  },
+  inputGroup: {
+    flex: 1,
+  },
+  levelGrid: {
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'space-between',
+  },
+  levelOption: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 12,
+    padding: 12,
+    flex: 1,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  levelOptionSelected: {
+    backgroundColor: '#ff4757',
+    borderColor: '#ff4757',
+  },
+  levelOptionText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  levelOptionTextSelected: {
+    color: '#fff',
   },
   generateButton: {
     backgroundColor: '#ff4757',
@@ -570,6 +539,103 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#ccc',
     lineHeight: 18,
+  },
+  workoutSection: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 30,
+    borderWidth: 1,
+    borderColor: '#333',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  workoutTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  workoutContent: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+  },
+  workoutText: {
+    color: '#fff',
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  timerSection: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  timerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 15,
+  },
+  timerDisplay: {
+    backgroundColor: '#333',
+    borderRadius: 20,
+    width: 150,
+    height: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: '#ff4757',
+  },
+  timerText: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#fff',
+    fontFamily: 'monospace',
+  },
+  timerControls: {
+    flexDirection: 'row',
+    gap: 15,
+  },
+  timerButton: {
+    backgroundColor: '#ff4757',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  timerButtonStop: {
+    backgroundColor: '#ffa502',
+  },
+  timerButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  saveButton: {
+    backgroundColor: '#2ed573',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    shadowColor: '#2ed573',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import PoseTrackerService from '../services/PoseTrackerService';
 import config from '../config/apiConfig';
 
+
 const FormCheckScreen = () => {
   const [permission, requestPermission] = useCameraPermissions();
   const [isRecording, setIsRecording] = useState(false);
@@ -27,32 +28,51 @@ const FormCheckScreen = () => {
   const [showExercisePicker, setShowExercisePicker] = useState(false);
   const [exerciseLibrary, setExerciseLibrary] = useState([]);
   const [recordingTime, setRecordingTime] = useState(0);
-  
+  const [isCameraReady, setIsCameraReady] = useState(false);
+
   const cameraRef = useRef(null);
   const recordingInterval = useRef(null);
-  const poseTrackerService = useRef(new PoseTrackerService()); // Uses API key from config
+  const poseTrackerService = new PoseTrackerService();
+
 
   useEffect(() => {
     loadExerciseLibrary();
   }, []);
 
+
   const loadExerciseLibrary = async () => {
     try {
-      const exercises = await poseTrackerService.current.getExerciseLibrary();
+      const exercises = await poseTrackerService.getExerciseLibrary();
       setExerciseLibrary(exercises);
     } catch (error) {
       console.error('Error loading exercises:', error);
-      setExerciseLibrary(poseTrackerService.current.getDefaultExercises());
+      setExerciseLibrary(poseTrackerService.getDefaultExercises());
     }
   };
 
+  // Added this function
+  const handleCameraReady = () => {
+    setIsCameraReady(true);
+  };
+
+
   const startRecording = async () => {
-    if (!cameraRef.current) return;
+    if (!cameraRef.current) {
+      Alert.alert('❌ Error', 'Camera not available. Please restart the app.');
+      return;
+    }
+
+    // More lenient camera ready check
+    if (!isCameraReady) {
+      Alert.alert('Camera Initializing', 'Please wait a moment for the camera to initialize.');
+      return;
+    }
 
     try {
+      console.log('Starting recording...');
       setIsRecording(true);
       setRecordingTime(0);
-      
+
       // Start recording timer
       recordingInterval.current = setInterval(() => {
         setRecordingTime(prev => prev + 1);
@@ -63,16 +83,19 @@ const FormCheckScreen = () => {
         mute: true,
       };
 
+      // Add a small delay before starting recording
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       const videoRecordPromise = cameraRef.current.recordAsync(recordingOptions);
       const data = await videoRecordPromise;
-      
+
       setRecordedVideo(data.uri);
       setIsRecording(false);
-      
+
       if (recordingInterval.current) {
         clearInterval(recordingInterval.current);
       }
-      
+
       Alert.alert(
         '🎬 Recording Complete!',
         'Your workout video has been recorded. Would you like to analyze your form?',
@@ -87,12 +110,31 @@ const FormCheckScreen = () => {
       if (recordingInterval.current) {
         clearInterval(recordingInterval.current);
       }
-      Alert.alert('❌ Error', 'Failed to record video. Please try again.');
+
+      // More specific error handling
+      if (error.message && error.message.includes('not ready')) {
+        Alert.alert(
+          '⏳ Camera Still Initializing',
+          'The camera is still starting up. Please wait a few seconds and try again.',
+          [
+            { text: 'Wait and Retry', onPress: () => {
+              setTimeout(() => {
+                setIsCameraReady(true);
+              }, 2000);
+            }},
+            { text: 'OK' }
+          ]
+        );
+      } else {
+        Alert.alert('❌ Error', 'Failed to record video. Please try again.');
+      }
     }
   };
 
+
   const stopRecording = async () => {
     if (!cameraRef.current || !isRecording) return;
+
 
     try {
       cameraRef.current.stopRecording();
@@ -104,11 +146,13 @@ const FormCheckScreen = () => {
     }
   };
 
+
   const analyzeForm = async () => {
     if (!recordedVideo) {
       Alert.alert('❌ Error', 'No video recorded to analyze.');
       return;
     }
+
 
     setIsAnalyzing(true);
     
@@ -122,7 +166,8 @@ const FormCheckScreen = () => {
         size: fileInfo.size
       };
 
-      const result = await poseTrackerService.current.analyzeForm(selectedExercise, videoBlob);
+
+      const result = await poseTrackerService.analyzeForm(selectedExercise, videoBlob);
       setAnalysisResult(result);
       setShowResults(true);
     } catch (error) {
@@ -136,11 +181,13 @@ const FormCheckScreen = () => {
     }
   };
 
+
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
 
   const resetSession = () => {
     setRecordedVideo(null);
@@ -148,6 +195,7 @@ const FormCheckScreen = () => {
     setShowResults(false);
     setRecordingTime(0);
   };
+
 
   if (!permission) {
     return (
@@ -159,6 +207,7 @@ const FormCheckScreen = () => {
       </View>
     );
   }
+
 
   if (!permission.granted) {
     return (
@@ -179,6 +228,7 @@ const FormCheckScreen = () => {
     );
   }
 
+
   return (
     <View style={styles.container}>
       <LinearGradient colors={['#1a1a1a', '#2d2d2d']} style={styles.background}>
@@ -195,6 +245,7 @@ const FormCheckScreen = () => {
           </View>
         </View>
 
+
         {/* Exercise Selection */}
         <TouchableOpacity 
           style={styles.exerciseSelector} 
@@ -204,6 +255,7 @@ const FormCheckScreen = () => {
           <Text style={styles.exerciseSelectorText}>{selectedExercise}</Text>
           <Text style={styles.exerciseSelectorIcon}>▼</Text>
         </TouchableOpacity>
+
 
         {/* Camera or Video Preview */}
         <View style={styles.cameraContainer}>
@@ -226,9 +278,15 @@ const FormCheckScreen = () => {
             <CameraView
               ref={cameraRef}
               style={styles.camera}
-              facing={CameraType.back}
+              onCameraReady={handleCameraReady} // Added this line
             >
               <View style={styles.cameraOverlay}>
+                {!isCameraReady && ( // Added this block
+                  <View style={styles.cameraLoadingIndicator}>
+                    <ActivityIndicator size="large" color="#ff4757" />
+                    <Text style={styles.cameraLoadingText}>Initializing camera...</Text>
+                  </View>
+                )}
                 {isRecording && (
                   <View style={styles.recordingIndicator}>
                     <View style={styles.recordingDot} />
@@ -244,16 +302,21 @@ const FormCheckScreen = () => {
           )}
         </View>
 
+
         {/* Controls */}
         <View style={styles.controls}>
           {!recordedVideo ? (
             <TouchableOpacity
-              style={[styles.recordButton, isRecording && styles.recordButtonActive]}
+              style={[
+                styles.recordButton, 
+                isRecording && styles.recordButtonActive,
+                !isCameraReady && styles.recordButtonDisabled // Added this line
+              ]}
               onPress={isRecording ? stopRecording : startRecording}
-              disabled={isAnalyzing}
+              disabled={isAnalyzing || !isCameraReady} // Updated this line
             >
               <Text style={styles.recordButtonText}>
-                {isRecording ? '⏹️ STOP' : '🔴 RECORD'}
+                {!isCameraReady ? '⏳ PREPARING...' : (isRecording ? '⏹️ STOP' : '🔴 RECORD')} {/* Updated this line */}
               </Text>
             </TouchableOpacity>
           ) : (
@@ -279,6 +342,7 @@ const FormCheckScreen = () => {
             </View>
           )}
         </View>
+
 
         {/* Exercise Picker Modal */}
         <Modal
@@ -324,6 +388,7 @@ const FormCheckScreen = () => {
           </View>
         </Modal>
 
+
         {/* Results Modal */}
         <Modal
           visible={showResults}
@@ -347,11 +412,12 @@ const FormCheckScreen = () => {
                     <Text style={styles.scoreLabel}>Overall Form Score</Text>
                     <Text style={[
                       styles.scoreValue,
-                      { color: poseTrackerService.current.getScoreColor(analysisResult.score) }
+                      { color: poseTrackerService.getScoreColor(analysisResult.score) }
                     ]}>
-                      {analysisResult.score}/100 {poseTrackerService.current.getScoreEmoji(analysisResult.score)}
+                      {analysisResult.score}/100 {poseTrackerService.getScoreEmoji(analysisResult.score)}
                     </Text>
                   </View>
+
 
                   {/* Strengths */}
                   {analysisResult.strengths.length > 0 && (
@@ -365,6 +431,7 @@ const FormCheckScreen = () => {
                     </View>
                   )}
 
+
                   {/* Corrections */}
                   {analysisResult.corrections.length > 0 && (
                     <View style={styles.feedbackSection}>
@@ -376,6 +443,7 @@ const FormCheckScreen = () => {
                       ))}
                     </View>
                   )}
+
 
                   {/* Detailed Feedback */}
                   {analysisResult.feedback.length > 0 && (
@@ -401,6 +469,7 @@ const FormCheckScreen = () => {
                     </View>
                   )}
 
+
                   <TouchableOpacity
                     style={styles.doneButton}
                     onPress={() => {
@@ -419,6 +488,7 @@ const FormCheckScreen = () => {
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
@@ -512,6 +582,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 20,
   },
+  cameraLoadingIndicator: { // Added this style
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -50 }, { translateY: -50 }],
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    padding: 20,
+    borderRadius: 12,
+  },
+  cameraLoadingText: { // Added this style
+    color: '#fff',
+    fontSize: 14,
+    marginTop: 10,
+    textAlign: 'center',
+  },
   recordingIndicator: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
@@ -589,6 +675,10 @@ const styles = StyleSheet.create({
   },
   recordButtonActive: {
     backgroundColor: '#ff3742',
+  },
+  recordButtonDisabled: { // Added this style
+    backgroundColor: '#666',
+    shadowOpacity: 0.1,
   },
   recordButtonText: {
     color: '#fff',
@@ -803,5 +893,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+
 
 export default FormCheckScreen;

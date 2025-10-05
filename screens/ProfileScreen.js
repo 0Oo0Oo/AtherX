@@ -19,6 +19,11 @@ const ProfileScreen = () => {
   const [userWeight, setUserWeight] = useState('');
   const [userHeight, setUserHeight] = useState('');
   const [fitnessGoal, setFitnessGoal] = useState('');
+  const [experienceLevel, setExperienceLevel] = useState('Beginner');
+  const [workoutFrequency, setWorkoutFrequency] = useState('3-4 times per week');
+  const [selectedEquipment, setSelectedEquipment] = useState([]);
+  const [showExperienceDropdown, setShowExperienceDropdown] = useState(false);
+  const [showFrequencyDropdown, setShowFrequencyDropdown] = useState(false);
   const [workoutTip, setWorkoutTip] = useState('');
   const [loadingTip, setLoadingTip] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -38,6 +43,9 @@ const ProfileScreen = () => {
         setUserWeight(data.weight || '');
         setUserHeight(data.height || '');
         setFitnessGoal(data.goal || '');
+        setExperienceLevel(data.experienceLevel || 'Beginner');
+        setWorkoutFrequency(data.workoutFrequency || '3-4 times per week');
+        setSelectedEquipment(data.equipment || []);
       } else {
         setIsEditing(true);
       }
@@ -59,6 +67,9 @@ const ProfileScreen = () => {
         weight: userWeight,
         height: userHeight,
         goal: fitnessGoal,
+        experienceLevel,
+        workoutFrequency,
+        equipment: selectedEquipment,
       };
       await AsyncStorage.setItem('userProfile', JSON.stringify(profile));
       setIsEditing(false);
@@ -67,6 +78,23 @@ const ProfileScreen = () => {
       Alert.alert('❌ Error', 'Failed to save profile');
     }
   };
+
+  const toggleEquipment = (equipment) => {
+    setSelectedEquipment(prev => {
+      if (prev.includes(equipment)) {
+        return prev.filter(item => item !== equipment);
+      } else {
+        return [...prev, equipment];
+      }
+    });
+  };
+
+  const experienceOptions = ['Beginner', 'Intermediate', 'Advanced'];
+  const frequencyOptions = ['1-2 times per week', '3-4 times per week', '5-6 times per week', 'Daily'];
+  const equipmentOptions = [
+    'Barbell', 'Dumbbells', 'Resistance Bands', 'Pull-up Bar',
+    'Bench', 'Squat Rack', 'Full Gym Access'
+  ];
 
   const loadWorkoutTip = async () => {
     setLoadingTip(true);
@@ -152,6 +180,35 @@ const ProfileScreen = () => {
             </View>
           </View>
 
+          {/* Basic Info Section */}
+          <View style={styles.inputSection}>
+            <Text style={styles.sectionTitle}>BASIC INFORMATION</Text>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>FULL NAME</Text>
+              <TextInput
+                style={styles.mainInput}
+                placeholder="Enter your full name"
+                placeholderTextColor="#666"
+                value={userName}
+                onChangeText={setUserName}
+                autoCapitalize="words"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>AGE</Text>
+              <TextInput
+                style={styles.mainInput}
+                placeholder="25"
+                placeholderTextColor="#666"
+                value={userAge}
+                onChangeText={setUserAge}
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
+
           {/* Physical Stats Section */}
           <View style={styles.inputSection}>
             <Text style={styles.sectionTitle}>PHYSICAL STATS</Text>
@@ -179,47 +236,115 @@ const ProfileScreen = () => {
                 keyboardType="numeric"
               />
             </View>
+
+            {/* BMI Display */}
+            {bmi && (
+              <View style={styles.bmiContainer}>
+                <Text style={styles.bmiLabel}>YOUR BMI</Text>
+                <View style={styles.bmiValueContainer}>
+                  <Text style={styles.bmiValue}>{bmi}</Text>
+                  <Text style={[styles.bmiCategory, { color: bmiCategory === 'Normal' ? '#4CAF50' : bmiCategory === 'Underweight' ? '#FF9800' : '#F44336' }]}>
+                    {bmiCategory}
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
 
           {/* Goals Section */}
           <View style={styles.inputSection}>
             <Text style={styles.sectionTitle}>YOUR GOALS</Text>
-            <TouchableOpacity style={styles.dropdown}>
-              <Text style={styles.dropdownText}>EXPERIENCE LEVEL</Text>
+
+            {/* Experience Level Dropdown */}
+            <TouchableOpacity
+              style={styles.dropdown}
+              onPress={() => setShowExperienceDropdown(!showExperienceDropdown)}
+            >
+              <Text style={styles.dropdownText}>{experienceLevel}</Text>
               <Text style={styles.dropdownArrow}>▼</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.dropdown}>
-              <Text style={styles.dropdownText}>WORKOUT FREQUENCY</Text>
+            {showExperienceDropdown && (
+              <View style={styles.dropdownOptions}>
+                {experienceOptions.map((option) => (
+                  <TouchableOpacity
+                    key={option}
+                    style={[
+                      styles.dropdownOption,
+                      experienceLevel === option && styles.dropdownOptionSelected
+                    ]}
+                    onPress={() => {
+                      setExperienceLevel(option);
+                      setShowExperienceDropdown(false);
+                    }}
+                  >
+                    <Text style={[
+                      styles.dropdownOptionText,
+                      experienceLevel === option && styles.dropdownOptionTextSelected
+                    ]}>
+                      {option}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {/* Workout Frequency Dropdown */}
+            <TouchableOpacity
+              style={styles.dropdown}
+              onPress={() => setShowFrequencyDropdown(!showFrequencyDropdown)}
+            >
+              <Text style={styles.dropdownText}>{workoutFrequency}</Text>
               <Text style={styles.dropdownArrow}>▼</Text>
             </TouchableOpacity>
+
+            {showFrequencyDropdown && (
+              <View style={styles.dropdownOptions}>
+                {frequencyOptions.map((option) => (
+                  <TouchableOpacity
+                    key={option}
+                    style={[
+                      styles.dropdownOption,
+                      workoutFrequency === option && styles.dropdownOptionSelected
+                    ]}
+                    onPress={() => {
+                      setWorkoutFrequency(option);
+                      setShowFrequencyDropdown(false);
+                    }}
+                  >
+                    <Text style={[
+                      styles.dropdownOptionText,
+                      workoutFrequency === option && styles.dropdownOptionTextSelected
+                    ]}>
+                      {option}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
 
           {/* Equipment Selection */}
           <View style={styles.equipmentSection}>
             <Text style={styles.sectionTitle}>AVAILABLE EQUIPMENT</Text>
             <View style={styles.equipmentGrid}>
-              <TouchableOpacity style={[styles.equipmentOption, styles.selected]}>
-                <Text style={styles.equipmentText}>BARBELL</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.equipmentOption}>
-                <Text style={styles.equipmentText}>DUMBBELLS</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.equipmentOption}>
-                <Text style={styles.equipmentText}>RESISTANCE{'\n'}BANDS</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.equipmentOption}>
-                <Text style={styles.equipmentText}>PULL-UP BAR</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.equipmentOption}>
-                <Text style={styles.equipmentText}>BENCH</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.equipmentOption}>
-                <Text style={styles.equipmentText}>SQUAT RACK</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.equipmentOption}>
-                <Text style={styles.equipmentText}>FULL GYM{'\n'}ACCESS</Text>
-              </TouchableOpacity>
+              {equipmentOptions.map((equipment) => (
+                <TouchableOpacity
+                  key={equipment}
+                  style={[
+                    styles.equipmentOption,
+                    selectedEquipment.includes(equipment) && styles.selected
+                  ]}
+                  onPress={() => toggleEquipment(equipment)}
+                >
+                  <Text style={[
+                    styles.equipmentText,
+                    selectedEquipment.includes(equipment) && styles.selectedText
+                  ]}>
+                    {equipment}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
 
@@ -407,6 +532,66 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     letterSpacing: 0.5,
+  },
+  bmiContainer: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  bmiLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#888',
+    marginBottom: 8,
+    letterSpacing: 0.5,
+  },
+  bmiValueContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  bmiValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  bmiCategory: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  dropdownOptions: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 12,
+    marginTop: -8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#333',
+    borderTopWidth: 0,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+  },
+  dropdownOption: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  dropdownOptionSelected: {
+    backgroundColor: '#ff475720',
+  },
+  dropdownOptionText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  dropdownOptionTextSelected: {
+    color: '#ff4757',
+    fontWeight: '600',
+  },
+  selectedText: {
+    color: '#fff',
   },
 });
 
